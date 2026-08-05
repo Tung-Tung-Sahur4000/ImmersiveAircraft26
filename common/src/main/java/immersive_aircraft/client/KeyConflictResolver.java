@@ -7,8 +7,13 @@ import net.minecraft.client.Minecraft;
 import org.apache.logging.log4j.Logger;
 import org.lwjgl.glfw.GLFW;
 
+import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Properties;
 
 /**
  * Moves this mod's keys off any binding another mod already claimed.
@@ -36,6 +41,16 @@ public final class KeyConflictResolver {
     };
 
     /**
+     * What this class last assigned, by mapping name. Minecraft writes every
+     * binding to options.txt when it shuts down, so without a record of our own
+     * an automatic move becomes indistinguishable from a deliberate one - and
+     * the checks below would then refuse to touch the key again, leaving the
+     * next conflict for the player to sort out by hand. Shared by every mod that
+     * calls in; mapping names are already namespaced.
+     */
+    private static final File RECORD = new File("./config/immersive_keybinds.properties");
+
+    /**
      * Call once the client is up, after every mod has registered its keys and
      * the player's own bindings have been loaded from options.
      *
@@ -47,6 +62,19 @@ public final class KeyConflictResolver {
             return;
         }
 
+        Properties record = loadRecord(log);
+        boolean changed = false;
+
+        // Hand back anything we assigned before deciding anything, so each
+        // launch resolves from the defaults. A conflict that has since gone away
+        // - the other mod was removed - gives the original key back on its own.
+        for (KeyMapping ourKey : ours) {
+            if (isManaged(ourKey) && describe(keyOf(ourKey)).equals(record.getProperty(ourKey.getName()))) {
+                ourKey.setKey(ourKey.getDefaultKey());
+                changed = true;
+            }
+        }
+
         List<KeyMapping> others = new ArrayList<>();
         for (KeyMapping candidate : client.options.keyMappings) {
             if (!ours.contains(candidate)) {
@@ -54,25 +82,25 @@ public final class KeyConflictResolver {
             }
         }
 
-        boolean changed = false;
         for (KeyMapping ourKey : ours) {
-            // Movement keys deliberately mirror the player's own WASD/jump/sneak,
-            // so a "clash" there is the entire point. Leave them alone.
-            if (ourKey instanceof MultiKeyMapping || ourKey instanceof FallbackKeyMapping) {
+            if (!isManaged(ourKey)) {
                 continue;
             }
             if (ourKey.isUnbound() || !ourKey.isDefault()) {
                 // Unbound, or the player picked this themselves - not ours to change.
+                record.remove(ourKey.getName());
                 continue;
             }
 
             KeyMapping clash = findClash(ourKey, others);
             if (clash == null) {
+                record.remove(ourKey.getName());
                 continue;
             }
 
             InputConstants.Key free = findFreeKey(others);
             if (free == null) {
+                record.remove(ourKey.getName());
                 log.warn("[keybinds] {} clashes with {} and no free fallback key was available; "
                                 + "please rebind one of them manually",
                         ourKey.getName(), clash.getName());
@@ -81,6 +109,7 @@ public final class KeyConflictResolver {
 
             InputConstants.Key was = keyOf(ourKey);
             ourKey.setKey(free);
+            record.setProperty(ourKey.getName(), describe(free));
             changed = true;
             log.info("[keybinds] moved {} from {} to {} because {} already uses {}",
                     ourKey.getName(), describe(was), describe(free), clash.getName(), describe(was));
@@ -88,17 +117,35 @@ public final class KeyConflictResolver {
 
         if (changed) {
             KeyMapping.resetMapping();
-            client.options.save();
         }
+        saveRecord(log, record);
+    }
+
+    /**
+     * Movement keys deliberately mirror the player's own WASD/jump/sneak, so a
+     * "clash" there is the entire point.
+     */
+    private static boolean isManaged(KeyMapping mapping) {
+        return !(mapping instanceof MultiKeyMapping) && !(mapping instanceof FallbackKeyMapping);
     }
 
     private static KeyMapping findClash(KeyMapping ourKey, List<KeyMapping> others) {
         for (KeyMapping other : others) {
-            if (!other.isUnbound() && other.same(ourKey)) {
+            if (!other.isUnbound() && !isChord(other) && other.same(ourKey)) {
                 return other;
             }
         }
         return null;
+    }
+
+    /**
+     * Vanilla's debug bindings (F3+B for hitboxes, F3+H for tooltips, ...) are
+     * registered as ordinary mappings on B and H, but only fire while F3 is
+     * held. Treating them as conflicts would shuffle perfectly usable keys for
+     * no reason, so they do not count - here or when looking for a free key.
+     */
+    private static boolean isChord(KeyMapping mapping) {
+        return mapping.getName().startsWith("key.debug.");
     }
 
     private static InputConstants.Key findFreeKey(List<KeyMapping> others) {
@@ -106,7 +153,7 @@ public final class KeyConflictResolver {
             InputConstants.Key candidate = InputConstants.Type.KEYSYM.getOrCreate(code);
             boolean taken = false;
             for (KeyMapping other : others) {
-                if (candidate.equals(keyOf(other))) {
+                if (!isChord(other) && candidate.equals(keyOf(other))) {
                     taken = true;
                     break;
                 }
@@ -116,6 +163,38 @@ public final class KeyConflictResolver {
             }
         }
         return null;
+    }
+
+    private static Properties loadRecord(Logger log) {
+        Properties record = new Properties();
+        if (RECORD.exists()) {
+            try (FileReader reader = new FileReader(RECORD)) {
+                record.load(reader);
+            } catch (IOException e) {
+                // Worst case we treat an automatic move as the player's own and
+                // leave the key alone, which is the safe direction to fail in.
+                log.warn("[keybinds] could not read {}: {}", RECORD, e.toString());
+            }
+        }
+        return record;
+    }
+
+    private static void saveRecord(Logger log, Properties record) {
+        try {
+            if (record.isEmpty()) {
+                //noinspection ResultOfMethodCallIgnored
+                RECORD.delete();
+                return;
+            }
+            //noinspection ResultOfMethodCallIgnored
+            RECORD.getParentFile().mkdirs();
+            try (FileWriter writer = new FileWriter(RECORD)) {
+                record.store(writer, "Keys moved automatically because another mod already used the default. "
+                        + "Delete this file to start over; rebinding a key in-game also releases it.");
+            }
+        } catch (IOException e) {
+            log.warn("[keybinds] could not write {}: {}", RECORD, e.toString());
+        }
     }
 
     private static InputConstants.Key keyOf(KeyMapping mapping) {
