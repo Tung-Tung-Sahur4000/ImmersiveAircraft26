@@ -23,6 +23,7 @@ import net.minecraft.sounds.SoundEvent;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.ItemStackTemplate;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.NotNull;
@@ -281,7 +282,11 @@ public abstract class EngineVehicle extends InventoryVehicleEntity {
                 }
 
                 if (stack.isEmpty()) {
-                    ItemStack remainingItem = item.getCraftingRemainder().create();
+                    // 26.1 returns null here for items with no crafting
+                    // remainder - which is most fuels - where it previously
+                    // returned ItemStack.EMPTY.
+                    ItemStackTemplate remainder = item.getCraftingRemainder();
+                    ItemStack remainingItem = remainder == null ? ItemStack.EMPTY : remainder.create();
                     getInventory().setItem(slots.get(i).index(), remainingItem);
                 }
             } else {
