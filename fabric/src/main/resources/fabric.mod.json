@@ -35,10 +35,12 @@
   "mixins": [
     "immersive_aircraft.mixins.json"
   ],
+  "accessWidener": "immersive_aircraft.accessWidener",
   "depends": {
-    "fabricloader": ">=0.11.3",
-    "java": ">=21",
-    "fabric-api-base": ">=0.1.0"
+    "minecraft": ">=26.1.2",
+    "fabricloader": ">=0.19.3",
+    "java": ">=25",
+    "fabric-api": ">=0.155.2"
   },
   "breaks": {
     "ad_astra": "<1.15.6"

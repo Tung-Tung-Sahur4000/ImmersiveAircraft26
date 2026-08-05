@@ -17,7 +17,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
-import net.minecraft.client.resources.model.MaterialSet;
+import net.minecraft.client.resources.model.sprite.SpriteGetter;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.world.item.BannerItem;
 import net.minecraft.world.item.DyeColor;
@@ -28,11 +28,11 @@ import net.minecraft.world.level.block.entity.BannerPatternLayers;
 import java.util.List;
 
 public abstract class InventoryVehicleRenderer<T extends InventoryVehicleEntity> extends DyeableVehicleEntityRenderer<T> {
-    protected final MaterialSet materialSet;
+    protected final SpriteGetter spriteGetter;
 
     public InventoryVehicleRenderer(EntityRendererProvider.Context context) {
         super(context);
-        this.materialSet = context.getMaterials();
+        this.spriteGetter = context.getSprites();
     }
 
     @Override
@@ -63,7 +63,7 @@ public abstract class InventoryVehicleRenderer<T extends InventoryVehicleEntity>
                 if (banner != null) {
                     BBObject bannerObject = model.objectsByName.get("banner_" + (i++));
                     if (bannerObject instanceof BBFaceContainer bannerContainer) {
-                        BBModelRenderer.renderBanner(bannerContainer, matrixStack, vertexConsumerProvider, materialSet, light, true, baseColor, banner.layers());
+                        BBModelRenderer.renderBanner(bannerContainer, matrixStack, vertexConsumerProvider, spriteGetter, light, true, baseColor, banner.layers());
                     }
                 }
             }
@@ -73,12 +73,8 @@ public abstract class InventoryVehicleRenderer<T extends InventoryVehicleEntity>
     public void renderSails(BBObject object, MultiBufferSource vertexConsumerProvider, T entity, PoseStack matrixStack, int light, float time) {
         List<ItemStack> slots = entity.getSlots(VehicleInventoryDescription.DYE);
         ItemStack stack = slots.stream().findFirst().orElse(ItemStack.EMPTY);
-        DyeColor color;
-        if (stack.getItem() instanceof DyeItem item) {
-            color = item.getDyeColor();
-        } else {
-            color = DyeColor.WHITE;
-        }
+        // DyeItem.getDyeColor() is gone; the colour is a data component now.
+        DyeColor color = stack.getOrDefault(DataComponents.DYE, DyeColor.WHITE);
         int c = color.getTextureDiffuseColor();
         float r = ((c >> 16) & 0xFF) / 255.0f;
         float g = ((c >> 8) & 0xFF) / 255.0f;

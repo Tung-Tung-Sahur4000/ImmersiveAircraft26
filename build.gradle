@@ -5,8 +5,9 @@ buildscript {
 }
 
 plugins {
-    id "architectury-plugin" version "3.4-SNAPSHOT"
-    id "dev.architectury.loom" version "1.14-SNAPSHOT" apply false
+    id "architectury-plugin" version "3.5-SNAPSHOT"
+    // 26.1+ is unobfuscated; plain Loom still demands a mappings configuration.
+    id "dev.architectury.loom-no-remap" version "1.17.491" apply false
 }
 
 architectury {
@@ -14,14 +15,9 @@ architectury {
 }
 
 subprojects {
-    apply plugin: "dev.architectury.loom"
-
-    loom {
-        silentMojangMappingsLicense()
-    }
+    apply plugin: "dev.architectury.loom-no-remap"
 
     repositories {
-        maven { url "https://maven.parchmentmc.org" }
         maven { url "https://maven.terraformersmc.com/releases/" }
         maven { url "https://dvs1.progwml6.com/files/maven/" }
         maven { url "https://maven.blamejared.com" }
@@ -35,22 +31,18 @@ subprojects {
 
     dependencies {
         minecraft "com.mojang:minecraft:${rootProject.architectury.minecraft}"
-        mappings loom.layered() {
-            officialMojangMappings()
-            parchment("org.parchmentmc.data:parchment-${rootProject.parchment_version}@zip")
-        }
+
+        // No mappings: 26.1 is unobfuscated, the official names are in the jar.
     }
 }
 
 
 def getAppVersion = { ->
     try {
-        def stdout = new ByteArrayOutputStream()
-        exec {
+        // Project.exec was removed in Gradle 9.
+        def tag = providers.exec {
             commandLine 'git', 'tag', '--points-at', 'HEAD'
-            standardOutput = stdout
-        }
-        def tag = stdout.toString().trim()
+        }.standardOutput.asText.get().trim()
         if (tag.isEmpty()) {
             return rootProject.minecraft_version + "-SNAPSHOT"
         }
@@ -67,15 +59,20 @@ allprojects {
     apply plugin: "architectury-plugin"
     apply plugin: "maven-publish"
 
-    archivesBaseName = rootProject.archives_base_name
+    base {
+        archivesName = rootProject.archives_base_name
+    }
     version = getAppVersion()
 
-    tasks.withType(JavaCompile) {
+    tasks.withType(JavaCompile).configureEach {
         options.encoding = "UTF-8"
-        options.release = 21
+        options.release = 25
     }
 
     java {
+        toolchain {
+            languageVersion = JavaLanguageVersion.of(25)
+        }
         withSourcesJar()
     }
 

@@ -9,8 +9,8 @@ import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.Sheets;
 import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.client.renderer.texture.OverlayTexture;
-import net.minecraft.client.resources.model.Material;
-import net.minecraft.client.resources.model.MaterialSet;
+import net.minecraft.client.resources.model.sprite.SpriteGetter;
+import net.minecraft.client.resources.model.sprite.SpriteId;
 import net.minecraft.util.ARGB;
 import net.minecraft.world.item.DyeColor;
 import net.minecraft.world.level.block.entity.BannerPatternLayers;
@@ -25,7 +25,7 @@ public class BBModelRenderer {
         VertexConsumer getBuffer(MultiBufferSource source, BBFaceContainer container, BBFace face);
     }
 
-    public static final VertexConsumerProvider DEFAULT_VERTEX_CONSUMER_PROVIDER = (source, container, face) -> source.getBuffer(container.enableCulling() ? RenderTypes.entityCutout(face.texture.location) : RenderTypes.entityCutoutNoCull(face.texture.location));
+    public static final VertexConsumerProvider DEFAULT_VERTEX_CONSUMER_PROVIDER = (source, container, face) -> source.getBuffer(container.enableCulling() ? RenderTypes.entityCutoutCull(face.texture.location) : RenderTypes.entityCutout(face.texture.location));
 
     public static <T extends VehicleEntity> void renderModel(BBModel model, PoseStack matrixStack, MultiBufferSource vertexConsumerProvider, int light, float time, T entity, ModelPartRenderHandler<T> modelPartRenderer, float red, float green, float blue, float alpha) {
         model.root.forEach(object -> renderObject(model, object, matrixStack, vertexConsumerProvider, light, time, entity, modelPartRenderer, red, green, blue, alpha));
@@ -112,7 +112,7 @@ public class BBModelRenderer {
         }
     }
 
-    public static void renderBanner(BBFaceContainer cube, PoseStack matrixStack, MultiBufferSource vertexConsumers, MaterialSet materialSet, int light, boolean isBanner, DyeColor baseColor, List<BannerPatternLayers.Layer> patterns) {
+    public static void renderBanner(BBFaceContainer cube, PoseStack matrixStack, MultiBufferSource vertexConsumers, SpriteGetter spriteGetter, int light, boolean isBanner, DyeColor baseColor, List<BannerPatternLayers.Layer> patterns) {
         matrixStack.pushPose();
 
         if (cube instanceof BBObject object) {
@@ -120,26 +120,28 @@ public class BBModelRenderer {
         }
 
         // Render the base material
-        Material baseMaterial = isBanner ? Sheets.BANNER_BASE : Sheets.SHIELD_BASE;
-        renderBannerMaterial(cube, matrixStack, vertexConsumers, materialSet, light, baseColor, baseMaterial);
+        SpriteId baseMaterial = isBanner ? Sheets.BANNER_BASE : Sheets.SHIELD_BASE;
+        renderBannerMaterial(cube, matrixStack, vertexConsumers, spriteGetter, light, baseColor, baseMaterial);
 
         // And the patterns
         for (BannerPatternLayers.Layer pattern : patterns) {
-            Material material = isBanner ? Sheets.getBannerMaterial(pattern.pattern()) : Sheets.getShieldMaterial(pattern.pattern());
-            renderBannerMaterial(cube, matrixStack, vertexConsumers, materialSet, light, pattern.color(), material);
+            // Sheets.get*Material(Holder<BannerPattern>) is now a SpriteMapper keyed on the pattern's asset id.
+            SpriteId material = (isBanner ? Sheets.BANNER_MAPPER : Sheets.SHIELD_MAPPER).apply(pattern.pattern().value().assetId());
+            renderBannerMaterial(cube, matrixStack, vertexConsumers, spriteGetter, light, pattern.color(), material);
         }
 
         matrixStack.popPose();
     }
 
-    private static void renderBannerMaterial(BBFaceContainer cube, PoseStack matrixStack, MultiBufferSource vertexConsumers, MaterialSet materialSet, int light, DyeColor color, Material material) {
+    private static void renderBannerMaterial(BBFaceContainer cube, PoseStack matrixStack, MultiBufferSource vertexConsumers, SpriteGetter spriteGetter, int light, DyeColor color, SpriteId material) {
         int fs = color.getTextureDiffuseColor();
         float r = ((fs >> 16) & 0xFF) / 255.0f;
         float g = ((fs >> 8) & 0xFF) / 255.0f;
         float b = (fs & 0xFF) / 255.0f;
         renderFaces(cube, matrixStack, vertexConsumers, light,
                 r, g, b, 1.0f,
-                (source, container, face) -> material.buffer(materialSet, vertexConsumers, RenderTypes::entityNoOutline));
+                // entityNoOutline is gone; entityTranslucent(loc, false) is the outline-free equivalent.
+                (source, container, face) -> material.buffer(spriteGetter, vertexConsumers, loc -> RenderTypes.entityTranslucent(loc, false)));
     }
 
     public static void renderSailObject(BBMesh cube, PoseStack matrixStack, MultiBufferSource vertexConsumerProvider, int light, float time, float red, float green, float blue, float alpha) {
@@ -151,7 +153,7 @@ public class BBModelRenderer {
         Matrix4f positionMatrix = last.pose();
         Matrix3f normalMatrix = last.normal();
         for (BBFace face : cube.getFaces()) {
-            VertexConsumer vertexConsumer = vertexConsumerProvider.getBuffer(RenderTypes.entityCutoutNoCull(face.texture.location));
+            VertexConsumer vertexConsumer = vertexConsumerProvider.getBuffer(RenderTypes.entityCutout(face.texture.location));
             for (int i = 0; i < 4; i++) {
                 BBFace.BBVertex v = face.vertices[i];
                 float distance = Math.max(

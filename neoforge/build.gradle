@@ -1,5 +1,6 @@
 plugins {
-    id "com.github.johnrengelman.shadow" version "7.1.2"
+    // johnrengelman/shadow does not run on Gradle 9.
+    id "com.gradleup.shadow" version "9.6.1"
 }
 
 architectury {
@@ -29,11 +30,11 @@ dependencies {
     forgeRuntimeLibrary 'org.mariuszgromada.math:MathParser.org-mXparser:5.2.1'
     include 'org.mariuszgromada.math:MathParser.org-mXparser:5.2.1'
 
-    modCompileOnlyApi("mezz.jei:jei-${minecraft_version}-neoforge-api:${jei_version}")
+    compileOnlyApi("mezz.jei:jei-${minecraft_version}-neoforge-api:${jei_version}")
 
-    modRuntimeOnly "me.shedaniel:RoughlyEnoughItems-api-neoforge:$rei_version"
+    runtimeOnly "me.shedaniel:RoughlyEnoughItems-api-neoforge:$rei_version"
 
-    common(project(path: ":common", configuration: "namedElements")) { transitive false }
+    common(project(":common")) { transitive false }
     shadowCommon(project(path: ":common", configuration: "transformProductionNeoForge")) { transitive false }
 }
 
@@ -47,18 +48,20 @@ processResources {
     }
 }
 
+// No remapJar on 26.1+: nothing needs remapping, so shadowJar is the artifact.
+jar {
+    archiveClassifier = "dev"
+}
+
 shadowJar {
     exclude "fabric.mod.json"
     exclude "architectury.common.json"
 
     configurations = [project.configurations.shadowCommon]
-    archiveClassifier = "dev-shadow"
+    archiveClassifier = ""
 }
 
-remapJar {
-    input.set shadowJar.archiveFile
-    dependsOn shadowJar
-}
+assemble.dependsOn shadowJar
 
 sourcesJar {
     def commonSources = project(":common").sourcesJar
