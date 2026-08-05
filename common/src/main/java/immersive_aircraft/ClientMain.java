@@ -14,9 +14,12 @@ import net.minecraft.world.InteractionHand;
 public class ClientMain {
     private static int activeTicks;
 
-    // This is ugly. And wrong. And bad. But it works, and I don't care enough to fix it properly.
+    // consumeClick() is already edge-triggered: click() bumps a counter on each
+    // press and this drains it. Also requiring isDown() means the key has to
+    // still be held when the tick happens, so a short tap - which is all a
+    // touchscreen control sends - is dropped and dismount silently never fires.
     protected static boolean consumeClick(KeyMapping keyMapping) {
-        if (keyMapping.isDown() && keyMapping.consumeClick()) {
+        if (keyMapping.consumeClick()) {
             keyMapping.setDown(false);
             while (keyMapping.consumeClick()) {
             }
