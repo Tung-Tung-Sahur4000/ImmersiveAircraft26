@@ -1,6 +1,7 @@
 package immersive_aircraft;
 
 import immersive_aircraft.client.KeyBindings;
+import immersive_aircraft.client.KeyConflictResolver;
 import immersive_aircraft.config.Config;
 import immersive_aircraft.entity.InventoryVehicleEntity;
 import immersive_aircraft.entity.VehicleEntity;
@@ -29,6 +30,10 @@ public class ClientMain {
     }
 
     public static void postLoad() {
+        // Runs here rather than at registration: every other mod has claimed its
+        // keys by now, and the player's own bindings have been loaded.
+        KeyConflictResolver.resolve(Main.LOGGER, KeyBindings.list);
+
         Main.messageHandler = new ClientMessageHandler();
         Main.cameraGetter = () -> Minecraft.getInstance().gameRenderer.getMainCamera().position();
         Main.firstPersonGetter = () -> Minecraft.getInstance().options.getCameraType() == CameraType.FIRST_PERSON;
