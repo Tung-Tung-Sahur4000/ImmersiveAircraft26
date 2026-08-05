@@ -46,6 +46,10 @@ processResources {
                 loader_major: "1",
                 minecraft_version: rootProject.architectury.minecraft
     }
+
+    // Fabric Loader resolves the access widener from this mod's own classpath
+    // root. In a dev run that root is this module, not :common, so pull it in.
+    from(project(":common").file("src/main/resources/immersive_aircraft.accessWidener"))
 }
 
 // No remapJar on 26.1+: nothing needs remapping, so shadowJar is the artifact.
@@ -54,6 +58,7 @@ jar {
 }
 
 shadowJar {
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     exclude "fabric.mod.json"
     exclude "architectury.common.json"
 
