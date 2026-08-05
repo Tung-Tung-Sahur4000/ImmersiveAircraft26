@@ -4,6 +4,8 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
 import immersive_aircraft.entity.VehicleEntity;
 import net.minecraft.client.Camera;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.state.level.CameraRenderState;
 import net.minecraft.client.renderer.GameRenderer;
 import net.minecraft.world.entity.Entity;
 import org.joml.Quaternionf;
@@ -21,8 +23,12 @@ public abstract class GameRendererMixin {
     @Final
     private Camera mainCamera;
 
-    @Inject(method = "bobHurt(Lcom/mojang/blaze3d/vertex/PoseStack;F)V", at = @At("HEAD"), cancellable = false)
-    public void immersiveAircraft$renderWorld(PoseStack poseStack, float partialTicks, CallbackInfo ci) {
+    // 26.1 reordered this and dropped the partial-tick argument in favour of a
+    // CameraRenderState, which does not carry one - so it comes from the game's
+    // delta tracker instead.
+    @Inject(method = "bobHurt(Lnet/minecraft/client/renderer/state/level/CameraRenderState;Lcom/mojang/blaze3d/vertex/PoseStack;)V", at = @At("HEAD"), cancellable = false)
+    public void immersiveAircraft$renderWorld(CameraRenderState cameraRenderState, PoseStack poseStack, CallbackInfo ci) {
+        float partialTicks = Minecraft.getInstance().getDeltaTracker().getGameTimeDeltaPartialTick(true);
         Entity entity = mainCamera.entity();
         //noinspection ConstantValue
         if (entity != null && !mainCamera.isDetached() && entity.getRootVehicle() instanceof VehicleEntity vehicle) {

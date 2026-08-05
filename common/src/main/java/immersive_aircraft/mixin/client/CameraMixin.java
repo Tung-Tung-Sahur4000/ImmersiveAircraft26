@@ -12,9 +12,14 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(Camera.class)
 public abstract class CameraMixin {
-    @Inject(method = "setup", at = @At("TAIL"))
-    public void ia$setup(Level level, Entity entity, boolean thirdPerson, boolean inverseView, float tickDelta, CallbackInfo ci) {
-        if (thirdPerson && entity.getVehicle() instanceof VehicleEntity vehicle) {
+    // Camera.setup(Level, Entity, boolean, boolean, float) no longer exists on
+    // 26.1; alignWithEntity is the surviving hook that positions the camera
+    // relative to its entity, so the extra vehicle zoom goes there.
+    @Inject(method = "alignWithEntity", at = @At("TAIL"))
+    public void ia$alignWithEntity(float partialTicks, CallbackInfo ci) {
+        Camera self = (Camera) (Object) this;
+        Entity entity = self.entity();
+        if (self.isDetached() && entity != null && entity.getVehicle() instanceof VehicleEntity vehicle) {
             move(-getMaxZoom((float) vehicle.getZoom()), 0.0f, 0.0f);
         }
     }
