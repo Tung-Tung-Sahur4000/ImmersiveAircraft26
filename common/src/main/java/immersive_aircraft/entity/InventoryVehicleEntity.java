@@ -107,6 +107,14 @@ public abstract class InventoryVehicleEntity extends DyeableVehicleEntity implem
 
     protected void initInventory() {
         this.inventory = new SparseSimpleInventory(getInventoryDescription().getInventorySize());
+        this.inventory.setChangeListener(() -> containerChanged(this.inventory));
+    }
+
+    /**
+     * Called whenever this vehicle's inventory changes. Replaces the vanilla
+     * ContainerListener callback, which was removed in 26.1.
+     */
+    public void containerChanged(Container sender) {
     }
 
     public SparseSimpleInventory getInventory() {

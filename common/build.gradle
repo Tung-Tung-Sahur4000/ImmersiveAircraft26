@@ -6,6 +6,12 @@ loom {
     accessWidenerPath = file("src/main/resources/immersive_aircraft.accessWidener")
 }
 
+// Loom classifies the jar "dev"; with no remapJar on 26.1 this is the real
+// artifact, so it must carry no classifier to be resolvable as the main one.
+jar {
+    archiveClassifier = ""
+}
+
 dependencies {
     // We depend on fabric loader here to use the fabric @Environment annotations
     // Do NOT use other classes from fabric loader

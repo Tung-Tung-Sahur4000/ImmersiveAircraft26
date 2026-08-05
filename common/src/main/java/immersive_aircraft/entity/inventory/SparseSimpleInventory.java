@@ -16,6 +16,23 @@ import net.minecraft.world.level.storage.ValueOutput;
 public class SparseSimpleInventory extends SimpleContainer {
     private final NonNullList<ItemStack> tracked;
     private boolean inventoryRequested = false;
+    private Runnable changeListener;
+
+    /**
+     * net.minecraft.world.ContainerListener no longer exists in 26.1, so change
+     * notifications are driven straight off the container instead.
+     */
+    public void setChangeListener(Runnable changeListener) {
+        this.changeListener = changeListener;
+    }
+
+    @Override
+    public void setChanged() {
+        super.setChanged();
+        if (changeListener != null) {
+            changeListener.run();
+        }
+    }
 
     public SparseSimpleInventory(int size) {
         super(size);

@@ -91,6 +91,10 @@ publishing {
             groupId = rootProject.group_id
             version = version + "+fabric"
             from components.java
+
+            // components.java only carries the "dev"-classified jar now that
+            // shadowJar is the real artifact; publish that as the main one.
+            artifact(shadowJar)
         }
     }
 }

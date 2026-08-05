@@ -76,6 +76,12 @@ allprojects {
         withSourcesJar()
     }
 
+    // Gradle module metadata would advertise the "dev"-classified jar as the
+    // main artifact; without it consumers resolve the shadowed jar from the POM.
+    tasks.withType(GenerateModuleMetadata).configureEach {
+        enabled = false
+    }
+
     publishing {
         repositories {
             maven {
