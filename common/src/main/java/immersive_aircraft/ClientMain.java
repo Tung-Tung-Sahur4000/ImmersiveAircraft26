@@ -34,6 +34,14 @@ public class ClientMain {
         // keys by now, and the player's own bindings have been loaded.
         KeyConflictResolver.resolve(Main.LOGGER, KeyBindings.list);
 
+        // A world we host ourselves is the only one guaranteed to be running
+        // this mod. Opening it to LAN still counts - it is still our server.
+        ContentVisibility.setMultiplayerCheck(() -> {
+            Minecraft client = Minecraft.getInstance();
+            return client != null && client.level != null && !client.hasSingleplayerServer();
+        });
+        ContentVisibility.hideKeys(KeyBindings.list, () -> Config.getInstance().hideContentOnServers);
+
         Main.messageHandler = new ClientMessageHandler();
         Main.cameraGetter = () -> Minecraft.getInstance().gameRenderer.getMainCamera().position();
         Main.firstPersonGetter = () -> Minecraft.getInstance().options.getCameraType() == CameraType.FIRST_PERSON;

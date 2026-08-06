@@ -1,5 +1,6 @@
 package immersive_aircraft.fabric;
 
+import immersive_aircraft.config.Config;
 import immersive_aircraft.*;
 import immersive_aircraft.cobalt.network.NetworkHandler;
 import immersive_aircraft.fabric.cobalt.network.NetworkHandlerImpl;
@@ -38,7 +39,14 @@ public final class CommonFabric implements ModInitializer {
         CreativeModeTab group = FabricCreativeModeTab.builder()
                 .title(ItemGroups.getDisplayName())
                 .icon(ItemGroups::getIcon)
-                .displayItems((enabledFeatures, entries) -> entries.acceptAll(Items.getSortedItems()))
+                .displayItems((enabledFeatures, entries) -> {
+                    // An empty category tab is dropped from the creative menu by
+                    // vanilla, so this hides the tab itself, not just its items.
+                    if (ContentVisibility.hidden(() -> Config.getInstance().hideContentOnServers)) {
+                        return;
+                    }
+                    entries.acceptAll(Items.getSortedItems());
+                })
                 .build();
 
         Registry.register(BuiltInRegistries.CREATIVE_MODE_TAB, Main.locate("group"), group);

@@ -23,6 +23,11 @@ public final class Config extends JsonConfig {
     }
 
 
+    // Hides the creative tab and the key bindings while connected to a server,
+    // where none of this works unless that server runs the mod too.
+    @BooleanConfigEntry(true)
+    public boolean hideContentOnServers = true;
+
     // Crash configs
     @BooleanConfigEntry(true)
     public boolean enableDropsForNonPlayer = true;

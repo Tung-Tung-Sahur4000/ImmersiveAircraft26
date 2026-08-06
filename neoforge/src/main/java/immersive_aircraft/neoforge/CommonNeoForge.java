@@ -1,5 +1,6 @@
 package immersive_aircraft.neoforge;
 
+import immersive_aircraft.config.Config;
 import immersive_aircraft.*;
 import immersive_aircraft.neoforge.cobalt.network.NetworkHandlerImpl;
 import immersive_aircraft.neoforge.cobalt.registration.CobaltFuelRegistryImpl;
@@ -48,7 +49,14 @@ public final class CommonNeoForge {
     public static final DeferredHolder<CreativeModeTab, CreativeModeTab> TAB = DEF_REG.register(Main.MOD_ID, () -> CreativeModeTab.builder()
             .title(ItemGroups.getDisplayName())
             .icon(ItemGroups::getIcon)
-            .displayItems((featureFlags, output) -> output.acceptAll(Items.getSortedItems()))
+            .displayItems((featureFlags, output) -> {
+                // An empty category tab is dropped from the creative menu by
+                // vanilla, so this hides the tab itself, not just its items.
+                if (ContentVisibility.hidden(() -> Config.getInstance().hideContentOnServers)) {
+                    return;
+                }
+                output.acceptAll(Items.getSortedItems());
+            })
             .build()
     );
 
