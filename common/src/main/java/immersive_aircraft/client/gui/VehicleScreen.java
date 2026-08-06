@@ -71,14 +71,15 @@ public class VehicleScreen extends AbstractContainerScreen<VehicleScreenHandler>
     public void extractRenderState(@NotNull GuiGraphicsExtractor context, int mouseX, int mouseY, float delta) {
         super.extractRenderState(context, mouseX, mouseY, delta);
 
-        // Slot tooltip
+        // Describes an empty slot, which has no stack for the normal tooltip to
+        // describe. Nothing else to do: unlike render() on 1.21, the super call
+        // above has already queued the tooltip for a slot that does hold an
+        // item, so asking for it again here queues a second one for the frame.
         if (hoveredSlot != null && !hoveredSlot.hasItem() && hoveredSlot.container == menu.getVehicle().getInventory()) {
             SlotDescription slot = menu.getVehicle().getInventoryDescription().getSlots().get(hoveredSlot.getContainerSlot());
             slot.getToolTip().ifPresent(
                 tooltip -> context.setTooltipForNextFrame(this.font, tooltip, Optional.empty(), mouseX, mouseY)
             );
-        } else {
-            extractTooltip(context, mouseX, mouseY);
         }
     }
 
